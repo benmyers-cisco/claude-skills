@@ -71,7 +71,7 @@ recording actually needs it — most won't.
 `$ARGUMENTS` can be:
 - **A time window** → discovery mode. `since 24h`, `since 3d`, `since 2w`, or bare `24h` / `today`.
   Lists new calls from both sources and asks which to extract. **This is the common case.**
-- A Webex recording URL (e.g., `https://example.webex.com/example/ldr.php?RCID=...`)
+- A Webex recording URL (e.g., `https://cisco.webex.com/cisco/ldr.php?RCID=...`)
 - An email search query to find one specific recording (e.g., `from:colleague weekly demo`)
 - Empty — ask whether the user wants a window, a URL, or a search
 
@@ -91,8 +91,8 @@ TOKEN=$(jq -r '.access_token' ~/projects/webex-agent/.webex_token.json)
 curl -s "https://webexapis.com/v1/recordings?from=${FROM}&to=${TO}&max=50" \
   -H "Authorization: Bearer ${TOKEN}"
 ```
-On **401**, refresh the token against `https://webexapis.com/v1/access_token` with your stored
-refresh token and retry once. Read `topic`, `createTime`, `durationSeconds`, `id`, `password`.
+On **401**, refresh the token exactly as `/webex-search` does — same token file, same client
+credentials — and retry once. Read `topic`, `createTime`, `durationSeconds`, `id`, `password`.
 
 **b. Shared recordings** — email. The Graph CLI has no date flag, so the filter goes inside the
 KQL query. `received>=` takes a plain `YYYY-MM-DD`:
@@ -149,8 +149,8 @@ password from it as below, then continue to step 2 (browser).
 **If `$ARGUMENTS` is a URL:**
 - Use it directly
 - Ask the user for the password (or check if provided after the URL)
-- If the URL points to a call the user hosted, it's worth one API lookup first — the direct
-  transcript is faster and needs no browser
+- If it's a `cisco.webex.com` link to a call the user hosted, it's worth one API lookup
+  first — the direct transcript is faster and needs no browser
 
 **If `$ARGUMENTS` is an email search query:**
 - Search email via: `~/.config/claude-graph/bin/msgraph email search "<query>" --max 1`
@@ -182,7 +182,7 @@ curl -sL "<transcriptDownloadLink>" -o ~/claude-memory/transcripts/<slug>-YYYYMM
 
 The result is WebVTT with **real speaker names** in each cue header:
 ```
-1 "Speaker Name" (3539300608)
+1 "Einar Nilsen-Nygaard" (3539300608)
 00:00:00.000 --> 00:00:17.813
 Text of the first cue...
 ```
@@ -198,10 +198,11 @@ rather than leaving blanks that read like the call had none.
 
 ⚠️ Two things the transcript will do that look like content but aren't:
 - **Webex profanity-masks with `*******`.** Leave the mask; don't reconstruct the word.
-- **Acronyms and product codenames get auto-corrected into unrelated words**, sometimes
-  expanded into a completely different proper noun. Correct these silently in any summary you
-  write, and if a name is garbled inconsistently across cues, flag it as unconfirmed rather
-  than picking whichever spelling appeared most often.
+- **Acronyms get auto-corrected into nonsense.** Confirmed corruptions: `ICC` → "International
+  Criminal Court", `TEAP` → "teep", `ISE` → "ICE". Correct these silently in any summary you
+  write. If a **codename** is garbled inconsistently across cues, flag it as unconfirmed and ask
+  — don't pick whichever spelling appeared most. ("Gangplank" arrived as *gang blank*,
+  *Ganglank*, and *gang Black* in one transcript.)
 
 ### 2. Navigate to the recording
 
@@ -250,17 +251,17 @@ Before saving, decide which of the user's workboard projects this call is about.
 there.
 
 This is a judgment call, not a keyword match. You've just read the transcript — you know what
-the call was actually about. Project names often share generic tokens, so matching on words
-mis-files almost everything.
+the call was actually about. Project names share generic tokens (*identity, fabric, CUI, data,
+access, Duo*), so matching on words mis-files almost everything.
 
-- **A call can serve several projects.** List every one it genuinely advances or blocks. If a
-  viewer groups calls by project, a missing entry hides the call from that project's view.
+- **A call can serve several projects.** List every one it genuinely advances or blocks. In
+  Hanuman Hub the call appears under each, so a missing one hides it from that project's view.
 - **Only projects the call actually moved.** A passing mention in someone's status round-up is
   not an association. If it wasn't discussed or decided, leave it off.
 - **If nothing fits, write no projects.** An empty list is honest; a wrong one is worse than
   none because it puts the call in a view where it doesn't belong.
-- Names must match the workboard verbatim. A typo means the call never shows under the real
-  project.
+- Names must match the workboard verbatim. The Hub flags names it can't resolve with a dashed
+  chip, but a typo means the call never shows under the real project.
 
 **A placeholder invite title is not a record of who attended.** Read the speaker names in the
 transcript before describing a call — a meeting titled for three people may have had two, and
@@ -301,7 +302,7 @@ Return the content in this format:
 After returning the content, ask:
 > "Where do you want to save this? Options:
 > 1. Recording note (`memory/recording-<slug>-YYYY-MM-DD.md`)
-> 2. Recording note + update the relevant project tracker
+> 2. Recording note + update CII Product Pulse (if CII-related)
 > 3. Just show me the content (don't save)
 > 4. Custom location"
 
@@ -331,17 +332,17 @@ metadata:
 <the content from step 7>
 ```
 
-- `description` is what a list view shows under the title — it's the line the user reads to
+- `description` is what the Hub list shows under the title — it's the line the user reads to
   decide whether to open the call. Lead with the outcomes, not the agenda.
 - Omit the `projects:` key entirely when step 6 found nothing. Don't write an empty list.
-- Drop the `**Transcript:**` line if no transcript file was saved. A line pointing at a file
-  that isn't there is a lie about what's on disk.
+- Drop the `**Transcript:**` line if no transcript file was saved. The Hub marks the rows that
+  have one, so a line pointing at a file that isn't there is a lie about what's on disk.
 - Then add the one-line pointer to `MEMORY.md` under `## Recordings & Meeting Notes`.
 
 ## Error Handling
 
-- **Webex API 401**: Refresh the token with your stored refresh token, retry once. If refresh
-  also fails, say the token needs manual re-auth — don't fall back to the browser silently,
+- **Webex API 401**: Refresh the token as `/webex-search` does, retry once. If refresh also
+  fails, say the token needs manual re-auth — don't fall back to the browser silently,
   because that turns a 30-second fix into a scraping session.
 - **Webex API 403**: The token lost the recordings scopes. Report the scope list rather than
   guessing at the cause.
@@ -352,7 +353,7 @@ metadata:
 - **`temporaryDirectDownloadLinks` expired**: Re-fetch the detail record. Never cache these.
 - **Chrome not running**: Only relevant for shared recordings. Tell the user to launch Chrome
   with the debug port command above.
-- **MCP not configured**: Tell the user to add `chrome-devtools` to their MCP settings
+- **MCP not configured**: Tell the user to add `chrome-devtools` to `~/.mcp.json`
 - **Password incorrect**: Show error and ask for correct password
 - **SSO required**: Prompt user to log in manually
 - **Recording not found**: If email search returns no results, ask for a direct URL
