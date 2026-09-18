@@ -74,7 +74,7 @@ These require external tools, APIs, or custom infrastructure. **They won't work 
 | `/manager-update` | Generate 2-5 topic update for weekly manager 1:1 | Microsoft Graph plugin + Webex agent |
 | `/portfolio-deck` | Generate a portfolio status PPTX deck from workboard data | Custom Node.js deck generator |
 | `/aha-sync` | Sync project status between workboard and Aha releases | Aha API key + custom Node.js connector |
-| `/webex-recording` | Extract transcript and summary from a Webex recording URL | Chrome with remote debugging + MCP server |
+| `/webex-recording` | Find and extract Webex recordings. `since 24h` lists new calls from both your own recordings and ones shared with you by email; then pulls transcript, summary, chapters, action items | Webex API token; Chrome with remote debugging + MCP server (shared recordings only) |
 | `/slack-mode` | Route notifications and permission prompts to Slack | Slack webhook + shell hook script |
 | `/rotate-hex-token` | Rotate an API token stored in macOS Keychain | Hex account + macOS Keychain |
 
@@ -88,6 +88,7 @@ These skills reference specific tools from the author's setup. To use them:
    - `~/projects/aha-connector/` → your project management API wrapper
    - `~/.config/claude-graph/bin/msgraph` → your calendar/email CLI
    - Webex agent paths → your messaging platform's API
+   - `~/projects/webex-agent/.webex_token.json` → wherever you store your Webex OAuth token
 3. Update `allowed-tools` to match your actual commands
 4. Test with `/skill-name` in Claude Code
 
@@ -101,7 +102,8 @@ These skills reference specific tools from the author's setup. To use them:
 | yap-log.md | wrap-up, manager-update | Core (optional) |
 | Microsoft Graph plugin | morning-coffee (optional), prep, manager-update | Integration |
 | Webex agent | morning-coffee (optional), prep, manager-update | Integration |
-| Chrome (remote debugging) | webex-recording | Integration |
+| Webex API token (`spark:recordings_read`, `meeting:recordings_read`) | webex-recording | Integration |
+| Chrome (remote debugging) | webex-recording (shared recordings only) | Integration |
 | Aha API key (Keychain) | aha-sync | Integration |
 | Slack webhook | slack-mode | Integration |
 | Custom Node.js services | portfolio-deck, aha-sync | Integration |
