@@ -73,17 +73,32 @@ recording actually needs it — most won't.
   Lists new calls from both sources and asks which to extract. **This is the common case.**
 - A Webex recording URL (e.g., `https://cisco.webex.com/cisco/ldr.php?RCID=...`)
 - An email search query to find one specific recording (e.g., `from:colleague weekly demo`)
-- Empty — ask whether the user wants a window, a URL, or a search
+- Empty — ask whether the user wants a window, a URL, or a search. **Do not assume 24 hours.**
+
+A window can also arrive as prose on the line *after* the command (some launchers send the
+user's text as a trailing message rather than as an argument). "last 14 days" sitting below
+`/webex-recording` is a 14-day request — honour it. What you must never do is treat an empty
+`$ARGUMENTS` as a 24-hour default when the surrounding text says otherwise.
 
 ## Step 0. Discovery mode — "what came in?"
 
 Run this when `$ARGUMENTS` is a time window. Query both sources, merge, then let the user pick.
 
-**Resolve the window** to an ISO-8601 UTC pair. Compute it — never hand-write a date:
+**Resolve the window** to an ISO-8601 UTC pair. Compute it — never hand-write a date. Set
+`WINDOW` from the request first: `24h` → `hours=24`, `3d` → `days=3`, `2w` → `days=14`,
+`today` → midnight local.
+
 ```bash
-FROM=$(python3 -c "import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(hours=24)).strftime('%Y-%m-%dT%H:%M:%SZ'))")
+# Substitute the requested delta here. This example says days=14; it is NOT a default.
+FROM=$(python3 -c "import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(days=14)).strftime('%Y-%m-%dT%H:%M:%SZ'))")
 TO=$(python3 -c "import datetime;print(datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")
 ```
+
+⚠️ **Never run this block with the example delta still in it.** If the requested window is
+unclear — or arrived as loose prose after the command rather than as an argument — **ask which
+window and stop.** Silently running 24 hours when 14 days was asked for looks like an empty
+week: the query succeeds, the list is short, and nothing signals that the window was wrong.
+Echo the resolved window in the header of the list you present so it's always checkable.
 
 **a. Owned recordings** — the Webex API:
 ```bash
@@ -121,7 +136,7 @@ rather than re-reading the message later.
 **d. Present the list.** Newest first, numbered, with source marked:
 
 ```
-Calls since <window> — <N> new, <M> already captured (hidden)
+Calls 2026-09-04 → 2026-09-18 (14 days) — 6 new, 1 already captured (hidden)
 
 1. [owned]  2026-03-10  15m  Architecture sync
 2. [shared] 2026-03-11  62m  Program weekly cadence        (from A. Colleague)
