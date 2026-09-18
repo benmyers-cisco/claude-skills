@@ -111,7 +111,7 @@ rather than re-reading the message later.
 1. **Same call in both sources.** Match on topic similarity plus a date within ~1 day. Webex
    suffixes topics with `-YYYYMMDD HHMM-N`; strip that before comparing. Keep the **owned**
    record — it has the ID and the direct transcript.
-2. **Already processed.** Glob `~/.claude/projects/*/memory/recording-*.md` and drop anything
+2. **Already processed.** Glob `~/claude-memory/recording-*.md` and drop anything
    already captured. The filename's `-YYYY-MM-DD` and the note's `description` are enough to
    recognise a call. This is the dedupe ledger — there is no separate state file to maintain,
    and that is deliberate.
@@ -246,7 +246,7 @@ If a cookie banner appears, click "Accept" to dismiss it.
 ### 6. Assign projects
 
 Before saving, decide which of the user's workboard projects this call is about. Read
-`~/.claude/projects/*/memory/workboard.md` and use the project names exactly as they appear
+`~/claude-memory/workboard.md` and use the project names exactly as they appear
 there.
 
 This is a judgment call, not a keyword match. You've just read the transcript — you know what
@@ -308,7 +308,7 @@ After returning the content, ask:
 If the user specified a save location in arguments, use that directly.
 
 **The recording note.** Save to
-`~/.claude/projects/*/memory/recording-<slug>-YYYY-MM-DD.md`. The filename carries the date and
+`~/claude-memory/recording-<slug>-YYYY-MM-DD.md`. The filename carries the date and
 any index reads it from there, so the `-YYYY-MM-DD` suffix is not optional. `<slug>` is short
 and kebab-case — the people or the topic, not the full title.
 
